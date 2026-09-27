@@ -1,4 +1,4 @@
-import { askForJSON } from './anthropicClient.js';
+import { askForJSON } from './geminiClient.js';
 
 const SYSTEM_PROMPT = `You help a health-literacy tool called CLAIMCHECK figure out how to research a health claim a user has typed in or pulled from a webpage.
 
