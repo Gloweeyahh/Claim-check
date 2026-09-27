@@ -3,11 +3,12 @@ import { extractSearchTerms } from '../services/ai/claimAnalysis.js';
 import { synthesizeAssessment } from '../services/ai/assessment.js';
 import { searchPubMed } from '../services/evidence/pubmed.js';
 import { searchWHOandCDC } from '../services/evidence/webHealthSources.js';
+import { logCheck } from '../services/db/logCheck.js';
 
 const router = Router();
 
 router.post('/verify', async (req, res) => {
-  const { claim } = req.body || {};
+  const { claim, sourceType, sourceDetail } = req.body || {};
   if (!claim || !claim.trim()) {
     return res.status(400).json({ implemented: true, error: 'missing-claim' });
   }
@@ -29,6 +30,18 @@ router.post('/verify', async (req, res) => {
       name: e.title ? `${e.source}: ${e.title}` : e.source,
       url: e.url,
     }));
+
+    // Fire-and-forget: logging failures should never affect the response
+    // the user is waiting on.
+    logCheck({
+      claim,
+      sourceType,
+      sourceDetail,
+      claimType,
+      verdict: assessment.verdict,
+      headline: assessment.headline,
+      evidenceCount: evidence.length,
+    });
 
     return res.json({
       implemented: true,
