@@ -63,6 +63,28 @@ Runs on http://localhost:5173 and calls the backend at the URL in `.env`.
   strictly from the evidence actually retrieved (it's instructed never to invent
   outside facts, and to answer "unclear" when evidence is thin)
 
+## Analyzing usage
+
+Every real verify call writes a row to a `checks` table in Supabase (claim text,
+source type, claim type, verdict, headline, evidence count, timestamp — no
+names, no IPs). To look at it:
+
+- **Browse it visually:** Supabase dashboard → your `claimcheck` project →
+  **Table Editor** → `checks`. Works fine from a phone browser, no SQL needed.
+- **Quick stats:** Supabase dashboard → **SQL Editor**, e.g.:
+  ```sql
+  select verdict, count(*) from checks group by verdict;
+  select claim_type, count(*) from checks group by claim_type order by 2 desc;
+  ```
+
+Logging is optional and fails silently if `SUPABASE_URL` /
+`SUPABASE_SERVICE_ROLE_KEY` aren't set — verify still works either way.
+
+**Before collecting real users' claims for your practicum analysis:** check
+with your MPH supervisor about informed consent / ethics approval. This logs
+what people typed, which counts as data from human participants even without
+names attached.
+
 ## Next step
 
 Some real gaps worth tackling next:
