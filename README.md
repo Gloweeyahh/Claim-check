@@ -1,19 +1,22 @@
 # CLAIMCHECK
 
-A digital health-literacy intervention: users submit a URL or type a health claim,
-then work through a five-stage PAUSE → IDENTIFY → CHECK → VERIFY → DECIDE process.
+A digital health-literacy intervention: users type a health claim, then work
+through a five-stage PAUSE → IDENTIFY → CHECK → VERIFY → DECIDE process.
 
-This is the Step 3 scaffold — the AI claim-analysis layer and real evidence
-retrieval (PubMed + WHO/CDC) are wired into `POST /api/verify`, and the
-frontend's Verify and Decide stages now render whatever comes back from that
-call instead of static sample content.
+Claim entry is manual only — there's no link/URL submission or social-platform
+scraping. The VERIFY stage still does real, live evidence retrieval: an AI
+call turns the claim into search queries, which hit PubMed's E-utilities API
+and (if configured) a WHO/CDC-restricted Google Programmable Search Engine.
+A second AI call then synthesizes the verdict strictly from what was actually
+retrieved — it's instructed never to invent outside facts, and to answer
+"unclear" whenever the evidence is too thin to judge.
 
 ## Structure
 
 ```
 claimcheck/
   client/   React + Vite frontend
-  server/   Express backend (content extraction API)
+  server/   Express backend (evidence retrieval + AI assessment API)
 ```
 
 ## Setup
@@ -27,9 +30,9 @@ cp .env.example .env
 ```
 
 Edit `.env` and add:
-- `YOUTUBE_API_KEY` — free, from Google Cloud Console (enable "YouTube Data API v3", no OAuth needed for public metadata/comments)
 - `GEMINI_API_KEY` — from aistudio.google.com/apikey, free tier, no card needed, powers claim analysis and the final assessment
-- `GOOGLE_API_KEY` + `GOOGLE_CSE_ID` — optional, powers the WHO/CDC evidence search (see the comments in `.env.example` for setup). Without these, `/api/verify` still works using PubMed alone.
+- `GOOGLE_API_KEY` + `GOOGLE_CSE_ID` — optional, powers the live WHO/CDC evidence search. Without these, `/api/verify` still works using PubMed alone.
+- `NCBI_API_KEY` — optional, raises PubMed's rate limit
 
 ```
 npm run dev
@@ -50,24 +53,24 @@ Runs on http://localhost:5173 and calls the backend at the URL in `.env`.
 
 ## What's real right now
 
-- Manual claim entry — fully wired, no mocks
-- Link entry — general public webpages are actually scraped (title/description/body)
-- YouTube links — actually pulled via the YouTube Data API (title, description, top comments)
-- Facebook/Instagram links — hit the documented fallback (no scraping API exists for
-  either without app review; see the conversation history / practicum notes for why)
+- Manual claim entry — the only input path, fully wired, no mocks
 - PAUSE and CHECK stages — real client-side logic, not mocked
 - VERIFY stage — a real AI call (Gemini) turns the claim into search queries, which
   hit PubMed's E-utilities API for real (free, no key needed) and, if configured,
   a Google Programmable Search Engine restricted to who.int/cdc.gov
 - DECIDE stage — a second AI call synthesizes the verdict, "why", and sources
-  strictly from the evidence actually retrieved (it's instructed never to invent
-  outside facts, and to answer "unclear" when evidence is thin)
+  strictly from the evidence actually retrieved
+- Timeouts everywhere in the pipeline (each external call, plus an overall
+  45s cap on `/api/verify`) so a slow or unresponsive API fails with a real
+  error instead of hanging the UI forever
+- A "Try again" retry button on the Verify/Decide stages if a check fails —
+  including a specific message for the common Render free-tier case (the
+  server waking up from sleep taking longer than the request)
 
 ## Analyzing usage
 
 Every real verify call writes a row to a `checks` table in Supabase (claim text,
-source type, claim type, verdict, headline, evidence count, timestamp — no
-names, no IPs). To look at it:
+claim type, verdict, headline, evidence count, timestamp — no names, no IPs). To look at it:
 
 - **Browse it visually:** Supabase dashboard → your `claimcheck` project →
   **Table Editor** → `checks`. Works fine from a phone browser, no SQL needed.
@@ -85,14 +88,20 @@ with your MPH supervisor about informed consent / ethics approval. This logs
 what people typed, which counts as data from human participants even without
 names attached.
 
+## A tradeoff worth knowing
+
+Since evidence retrieval is now purely automated (no user-submitted link to
+anchor it), the AI's search-query generation step carries a bit more weight —
+if it picks poor search terms for an ambiguous claim, PubMed/WHO/CDC may come
+back with little relevant evidence, and the assessment should (and is
+instructed to) fall back to "unclear" in that case rather than guess.
+
 ## Next step
 
 Some real gaps worth tackling next:
 - Rate limiting / caching on `/api/verify` — every check currently makes 2 AI calls
   plus several evidence-source calls; caching by claim text would cut cost and latency
   for repeat checks
-- Better claim extraction for scraped webpages (currently just the page title —
-  could ask the AI layer to pull the actual claim out of the body text instead)
-- The TikTok Research API integration, pending application approval
 - Basic tests for the evidence and AI service functions
-- Deployment (Netlify/Vercel for the client, Render/Railway for the server)
+- Deployment (Netlify for the client, Render for the server) — already live; see
+  the deployment steps covered earlier in the project conversation
