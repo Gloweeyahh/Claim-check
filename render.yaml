@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: claimcheck-server
+    runtime: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    plan: free
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL
+        value: claude-sonnet-5
+      - key: YOUTUBE_API_KEY
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: GOOGLE_CSE_ID
+        sync: false
+      - key: NCBI_API_KEY
+        sync: false
+      - key: FRONTEND_URL
+        sync: false

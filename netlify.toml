@@ -1,0 +1,8 @@
+[build]
+  base = "client"
+  command = "npm run build"
+  publish = "client/dist"
+
+# VITE_API_URL is set in the Netlify dashboard (Site settings → Environment
+# variables), not here, since it points at your Render backend URL which
+# you won't have until after the backend is deployed.
