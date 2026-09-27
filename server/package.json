@@ -8,7 +8,7 @@
     "start": "node src/index.js"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "latest",
+    "@google/genai": "latest",
     "@supabase/supabase-js": "^2.45.0",
     "cheerio": "^1.0.0",
     "cors": "^2.8.5",
