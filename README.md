@@ -28,7 +28,7 @@ cp .env.example .env
 
 Edit `.env` and add:
 - `YOUTUBE_API_KEY` — free, from Google Cloud Console (enable "YouTube Data API v3", no OAuth needed for public metadata/comments)
-- `ANTHROPIC_API_KEY` — from console.anthropic.com, powers claim analysis and the final assessment
+- `GEMINI_API_KEY` — from aistudio.google.com/apikey, free tier, no card needed, powers claim analysis and the final assessment
 - `GOOGLE_API_KEY` + `GOOGLE_CSE_ID` — optional, powers the WHO/CDC evidence search (see the comments in `.env.example` for setup). Without these, `/api/verify` still works using PubMed alone.
 
 ```
@@ -56,7 +56,7 @@ Runs on http://localhost:5173 and calls the backend at the URL in `.env`.
 - Facebook/Instagram links — hit the documented fallback (no scraping API exists for
   either without app review; see the conversation history / practicum notes for why)
 - PAUSE and CHECK stages — real client-side logic, not mocked
-- VERIFY stage — a real AI call (Claude) turns the claim into search queries, which
+- VERIFY stage — a real AI call (Gemini) turns the claim into search queries, which
   hit PubMed's E-utilities API for real (free, no key needed) and, if configured,
   a Google Programmable Search Engine restricted to who.int/cdc.gov
 - DECIDE stage — a second AI call synthesizes the verdict, "why", and sources
