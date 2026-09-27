@@ -1,4 +1,4 @@
-import { askForJSON } from './anthropicClient.js';
+import { askForJSON } from './geminiClient.js';
 
 const SYSTEM_PROMPT = `You are the reasoning layer behind CLAIMCHECK, a tool that helps engineering students — not medical or health students — judge health claims they see online. Write for someone with no medical or scientific background: short sentences, everyday words, no jargon.
 
