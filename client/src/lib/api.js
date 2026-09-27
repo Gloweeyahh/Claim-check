@@ -19,14 +19,16 @@ export async function extractFromUrl(url) {
 }
 
 /**
- * Placeholder for the evidence-retrieval + AI layer (next build step).
- * The backend route exists and responds, but doesn't do real verification yet.
+ * Runs the full verify pipeline: AI claim analysis, evidence retrieval
+ * (PubMed + WHO/CDC), and AI assessment synthesis. sourceType/sourceDetail
+ * are passed through only so the backend can log them for later analysis —
+ * they don't affect the assessment itself.
  */
-export async function verifyClaim(claim) {
+export async function verifyClaim(claim, sourceType, sourceDetail) {
   const res = await fetch(`${API_URL}/api/verify`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ claim }),
+    body: JSON.stringify({ claim, sourceType, sourceDetail }),
   });
   if (!res.ok) {
     throw new Error(`Verify request failed (${res.status})`);
