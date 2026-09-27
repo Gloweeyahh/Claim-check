@@ -33,10 +33,6 @@ export default function App() {
 
       {view === 'flow' && <VerifyFlow claim={claim} onRestart={restart} />}
 
-      {/* TEMPORARY debug line — remove once the API URL issue is confirmed fixed */}
-      <p style={{ fontSize: 11, color: 'var(--ink-soft)', textAlign: 'center', marginTop: 40, opacity: 0.7 }}>
-        API target: {import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL : '⚠️ NOT SET — this is the bug'}
-      </p>
     </div>
   );
 }
