@@ -2,27 +2,56 @@ import { Router } from 'express';
 import { extractSearchTerms } from '../services/ai/claimAnalysis.js';
 import { synthesizeAssessment } from '../services/ai/assessment.js';
 import { searchPubMed } from '../services/evidence/pubmed.js';
-import { searchWHOandCDC } from '../services/evidence/webHealthSources.js';
+import { searchMedlinePlus } from '../services/evidence/nih.js';
+import { searchCDC } from '../services/evidence/cdc.js';
+import { searchWHO } from '../services/evidence/who.js';
 import { logCheck } from '../services/db/logCheck.js';
 
 const router = Router();
 
-// Belt-and-braces on top of the per-call timeouts already inside
-// claimAnalysis/pubmed/webHealthSources/assessment: even if something in
-// there misbehaves, the whole request still fails within 45s instead of
-// hanging indefinitely.
+// Belt-and-braces on top of the per-call timeouts inside each service:
+// even if something misbehaves, the whole request fails within 45s
+// instead of hanging indefinitely.
 const OVERALL_TIMEOUT_MS = 45000;
+
+function dedupe(items) {
+  const seen = new Set();
+  return items.filter((e) => {
+    const key = e.url || e.title;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
 
 async function runVerifyPipeline(claim, sourceType, sourceDetail) {
   const { queries, claimType } = await extractSearchTerms(claim);
+  const qs = queries.slice(0, 3);
+  const searchText = [claim, ...qs].join(' ');
 
-  // Run PubMed + WHO/CDC searches for each query in parallel, then flatten
-  // and cap the total so the AI synthesis prompt stays a reasonable size.
-  const searchPromises = queries
-    .slice(0, 3)
-    .flatMap((q) => [searchPubMed(q), searchWHOandCDC(q)]);
-  const evidenceArrays = await Promise.all(searchPromises);
-  const evidence = evidenceArrays.flat().slice(0, 6);
+  // All four sources run in parallel. Each service catches its own errors
+  // and returns [] on failure, so one source going down never sinks the rest.
+  const [pubmedArrs, nihArrs, cdcArrs, who] = await Promise.all([
+    Promise.all(qs.map((q) => searchPubMed(q))),
+    Promise.all(qs.slice(0, 2).map((q) => searchMedlinePlus(q))),
+    Promise.all(qs.slice(0, 2).map((q) => searchCDC(q))),
+    searchWHO(searchText),
+  ]);
+
+  // Each source gets its own cap so PubMed can't crowd the authorities out.
+  const pubmed = dedupe(pubmedArrs.flat()).slice(0, 3);
+  const nih = dedupe(nihArrs.flat()).slice(0, 2);
+  const cdc = dedupe(cdcArrs.flat()).slice(0, 2);
+  const whoItems = dedupe(who).slice(0, 2);
+
+  // Visible in Render's logs on every check — shows at a glance which
+  // sources are returning results and which are coming back empty.
+  console.log(
+    `Evidence counts — WHO: ${whoItems.length}, CDC: ${cdc.length}, NIH: ${nih.length}, PubMed: ${pubmed.length}`
+  );
+
+  // Health authorities first, then the research literature.
+  const evidence = [...whoItems, ...cdc, ...nih, ...pubmed];
 
   const assessment = await synthesizeAssessment(claim, evidence);
 
